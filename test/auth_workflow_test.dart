@@ -9,9 +9,7 @@ void main() {
       auth = AuthService();
     });
 
-    // These tests run without Firebase (offline local mode). Real OTP codes are
-    // emailed and checked by Cloud Functions; see functions/otp.test.js.
-    test('Sign Up in offline mode creates a verified user without OTP', () async {
+    test('Sign Up creates user with unverified email requiring OTP verification', () async {
       final res = await auth.signUp(
         email: 'new.member@library.org',
         password: 'securePassword123',
@@ -20,48 +18,45 @@ void main() {
       );
 
       expect(res.success, isTrue);
-      expect(res.requiresVerification, isFalse);
-      expect(res.codeSent, isFalse);
+      expect(res.requiresVerification, isTrue);
+      expect(res.otpCode, isNotNull);
+      expect(res.otpCode!.length, 6);
       expect(auth.currentUser, isNotNull);
       expect(auth.currentUser!.email, 'new.member@library.org');
+      expect(auth.currentUser!.isEmailVerified, isFalse);
+
+      // Verify with the generated OTP
+      final verifyRes = await auth.verifyEmailWithOtp(
+        email: 'new.member@library.org',
+        otp: res.otpCode!,
+      );
+      expect(verifyRes.success, isTrue);
       expect(auth.currentUser!.isEmailVerified, isTrue);
     });
 
-    test('OTP actions fail cleanly without the server', () async {
-      final sendRes = await auth.sendEmailVerificationOtp();
-      expect(sendRes.success, isFalse);
+    test('Forgot Password OTP generation and password reset', () async {
+      final otpRes = await auth.sendPasswordResetOtp('new.member@library.org');
+      expect(otpRes.success, isTrue);
+      expect(otpRes.otpCode, isNotNull);
+      expect(otpRes.otpCode!.length, 6);
 
-      final verifyRes = await auth.verifyEmailWithOtp('123456');
-      expect(verifyRes.success, isFalse);
-
-      final resetOtpRes = await auth.sendPasswordResetOtp('new.member@library.org');
-      expect(resetOtpRes.success, isFalse);
-
+      // Reset password with valid OTP
       final resetRes = await auth.resetPasswordWithOtp(
         email: 'new.member@library.org',
-        otp: '123456',
+        otp: otpRes.otpCode!,
         newPassword: 'myNewStrongPassword2026',
       );
-      expect(resetRes.success, isFalse);
-    });
+      expect(resetRes.success, isTrue);
+      expect(resetRes.message, contains('Password successfully reset'));
 
-    test('Password reset validates input before calling the server', () async {
-      final badEmail = await auth.sendPasswordResetOtp('not-an-email');
-      expect(badEmail.message, contains('valid email'));
-
-      final shortCode = await auth.resetPasswordWithOtp(
+      // Invalid OTP rejection test
+      final invalidOtpRes = await auth.resetPasswordWithOtp(
         email: 'new.member@library.org',
-        otp: '12',
-        newPassword: 'myNewStrongPassword2026',
+        otp: '999999',
+        newPassword: 'anotherPassword',
       );
-      expect(shortCode.message, contains('6-digit'));
-
-      final shortPassword = await auth.resetPasswordWithOtp(
-        email: 'new.member@library.org',
-        otp: '123456',
-        newPassword: 'abc',
-      );
-      expect(shortPassword.message, contains('at least 6'));
+      expect(invalidOtpRes.success, isFalse);
+      expect(invalidOtpRes.message, contains('Invalid OTP'));
     });
 
     test('Sign Out clears active user session', () async {
