@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/library_repository.dart';
@@ -103,16 +104,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (res.success) {
       _syncUserRole();
       if (res.requiresVerification) {
-        if (mounted && !res.codeSent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res.message),
-              backgroundColor: AppColors.danger,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        _navigateToVerification(codeAlreadySent: res.codeSent);
+        _navigateToVerification();
       } else {
         _navigateToHome();
       }
@@ -248,13 +240,6 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                     ],
-                    if (errorText != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        errorText!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -268,10 +253,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
-                            setDialogState(() {
-                              isSubmitting = true;
-                              errorText = null;
-                            });
+                            final messenger = ScaffoldMessenger.of(context);
+                            setDialogState(() => isSubmitting = true);
                             final res = await _auth.sendPasswordResetOtp(resetEmailController.text);
                             setDialogState(() {
                               isSubmitting = false;
@@ -280,6 +263,12 @@ class _AuthScreenState extends State<AuthScreen> {
                                 sentMessage = res.message;
                               }
                             });
+
+                            if (!res.success) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text(res.message), backgroundColor: AppColors.danger),
+                              );
+                            }
                           },
                     child: isSubmitting
                         ? const SizedBox(
@@ -294,20 +283,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
-                            setDialogState(() {
-                              isSubmitting = true;
-                              errorText = null;
-                            });
+                            setDialogState(() => isSubmitting = true);
                             final res = await _auth.resetPasswordWithOtp(
                               email: resetEmailController.text,
                               otp: otpController.text,
                               newPassword: newPasswordController.text,
                             );
-                            setDialogState(() {
-                              isSubmitting = false;
-                              if (!res.success) errorText = res.message;
-                            });
-                            if (!res.success) return;
+                            setDialogState(() => isSubmitting = false);
 
                             // Keep the dialog open on failure so the user can retry the code.
                             if (res.success && ctx.mounted) {
@@ -317,7 +299,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(res.message),
-                                  backgroundColor: AppColors.success,
+                                  backgroundColor: res.success ? AppColors.success : AppColors.danger,
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -638,43 +620,45 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
-                const Divider(color: AppColors.border),
-                const SizedBox(height: 12),
+                if (kDebugMode) ...[
+                  const SizedBox(height: 20),
+                  const Divider(color: AppColors.border),
+                  const SizedBox(height: 12),
 
-                // Quick Demo Accounts for Evaluation
-                const Center(
-                  child: Text(
-                    'Quick Test & Login Mode:',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.bold),
+                  // Quick Demo Accounts for Evaluation
+                  const Center(
+                    child: Text(
+                      'Dev Evaluation Mode:',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          textStyle: const TextStyle(fontSize: 11),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            textStyle: const TextStyle(fontSize: 11),
+                          ),
+                          onPressed: _quickFillMemberDemo,
+                          child: const Text('👤 Member (Demo Auto-Fill)'),
                         ),
-                        onPressed: _quickFillMemberDemo,
-                        child: const Text('👤 Member (Demo Auto-Fill)'),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          textStyle: const TextStyle(fontSize: 11),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            textStyle: const TextStyle(fontSize: 11),
+                          ),
+                          onPressed: _selectStaffManualMode,
+                          child: const Text('🏢 Staff (Manual Login)'),
                         ),
-                        onPressed: _selectStaffManualMode,
-                        child: const Text('🏢 Staff (Manual Login)'),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
