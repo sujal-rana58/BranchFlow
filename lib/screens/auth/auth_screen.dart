@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/library_repository.dart';
@@ -21,12 +20,14 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   String _selectedRole = 'member'; // 'member' or 'librarian'
 
@@ -34,6 +35,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -92,6 +94,16 @@ class _AuthScreenState extends State<AuthScreen> {
   // -------------------------------------------------------------
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Passwords do not match. Please verify your password.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
     final res = await _auth.signUp(
       email: _emailController.text,
@@ -321,41 +333,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------------------------------------------
-  // FILL CREDENTIALS HINT (MEMBER DEMO AUTO-FILL)
-  // -------------------------------------------------------------
-  void _quickFillMemberDemo() {
-    setState(() {
-      _emailController.text = 'member@branchflow.lib';
-      _passwordController.text = 'password123';
-      _isSignUp = false;
-      _selectedRole = 'member';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Member demo credentials filled. Tap "Sign In" to authenticate.'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _selectStaffManualMode() {
-    setState(() {
-      _emailController.clear();
-      _passwordController.clear();
-      _isSignUp = false;
-      _selectedRole = 'librarian';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Staff portal: Please manually enter your authorized staff credentials.'),
-        duration: Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -568,6 +545,38 @@ class _AuthScreenState extends State<AuthScreen> {
                         },
                       ),
 
+                      // Confirm Password Field (Sign Up Only)
+                      if (_isSignUp) ...[
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          decoration: InputDecoration(
+                            labelText: 'Confirm Password',
+                            hintText: '••••••••',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                size: 18,
+                              ),
+                              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                            ),
+                          ),
+                          validator: (val) {
+                            if (_isSignUp) {
+                              if (val == null || val.isEmpty) {
+                                return 'Please confirm your password';
+                              }
+                              if (val != _passwordController.text) {
+                                return 'Passwords do not match';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+
                       // Forgot Password Button (Only on Sign In)
                       if (!_isSignUp) ...[
                         Align(
@@ -584,7 +593,60 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                       ] else ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Account Role / Authorization',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(
+                                  child: Text('👤 Member'),
+                                ),
+                                selected: _selectedRole == 'member',
+                                selectedColor: AppColors.primaryLight.withValues(alpha: 0.15),
+                                labelStyle: TextStyle(
+                                  color: _selectedRole == 'member' ? AppColors.primary : AppColors.textSecondary,
+                                  fontWeight: _selectedRole == 'member' ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setState(() => _selectedRole = 'member');
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(
+                                  child: Text('🏢 Staff / Librarian'),
+                                ),
+                                selected: _selectedRole == 'librarian',
+                                selectedColor: AppColors.primaryLight.withValues(alpha: 0.15),
+                                labelStyle: TextStyle(
+                                  color: _selectedRole == 'librarian' ? AppColors.primary : AppColors.textSecondary,
+                                  fontWeight: _selectedRole == 'librarian' ? FontWeight.bold : FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setState(() => _selectedRole = 'librarian');
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
@@ -592,14 +654,20 @@ class _AuthScreenState extends State<AuthScreen> {
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: const Color(0xFFD4E8DA)),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.badge_outlined, size: 16, color: AppColors.primary),
-                              SizedBox(width: 8),
+                              Icon(
+                                _selectedRole == 'librarian' ? Icons.admin_panel_settings_outlined : Icons.badge_outlined,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Registering as a Community Library Member.',
-                                  style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
+                                  _selectedRole == 'librarian'
+                                      ? 'Authorizing account with Library Staff / Librarian permissions.'
+                                      : 'Authorizing account with Community Library Member privileges.',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ],
@@ -619,46 +687,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     ],
                   ),
                 ),
-
-                if (kDebugMode) ...[
-                  const SizedBox(height: 20),
-                  const Divider(color: AppColors.border),
-                  const SizedBox(height: 12),
-
-                  // Quick Demo Accounts for Evaluation
-                  const Center(
-                    child: Text(
-                      'Dev Evaluation Mode:',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            textStyle: const TextStyle(fontSize: 11),
-                          ),
-                          onPressed: _quickFillMemberDemo,
-                          child: const Text('👤 Member (Demo Auto-Fill)'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            textStyle: const TextStyle(fontSize: 11),
-                          ),
-                          onPressed: _selectStaffManualMode,
-                          child: const Text('🏢 Staff (Manual Login)'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
