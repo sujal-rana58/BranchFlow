@@ -2,37 +2,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper Functions
+    // -------------------------------------------------------------
+    // HELPER FUNCTIONS
+    // -------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // 1. Users Collection
+    function isLibrarian() {
+      return isSignedIn() && (
+        request.auth.token.role == 'librarian' ||
+        (request.auth.token.email != null && (
+          request.auth.token.email.matches('.*staff.*') ||
+          request.auth.token.email.matches('.*admin.*') ||
+          request.auth.token.email.matches('.*librarian.*')
+        ))
+      );
+    }
+
+    // 1. Users: Profiles scoped strictly to the authenticated user (or librarians for verification)
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isLibrarian());
+      allow write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // 2. Branches: Network branches catalog
+    // 2. Branches: Community library branch locations (public read, librarian write)
     match /branches/{branchId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isLibrarian();
     }
 
-    // 3. Books: Unified catalog across all community libraries
+    // 3. Books: Catalog is publicly readable; inventory updates require authentication
     match /books/{bookId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
-    // 4. Loans: Real-time borrow and cross-branch return ledger
+    // 4. Loans: Real-time borrow & return ledger
     match /loans/{loanId} {
-      allow read, write: if true;
+      allow read: if isSignedIn() && (
+        resource == null ||
+        resource.data.memberId == request.auth.uid ||
+        isLibrarian()
+      );
+      allow create: if isSignedIn() && request.resource.data.memberId == request.auth.uid;
+      allow update: if isSignedIn();
+      allow delete: if isLibrarian();
     }
 
-    // 5. Inter-Branch Transit Queue
+    // 5. Transit Items: Logistics queue managed by authenticated library network staff
     match /transit_items/{transitId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
-    // 6. OTP codes: hashed codes managed only by Cloud Functions (Admin SDK)
+    // 6. OTP Codes: Cryptographically hashed tokens managed solely by Cloud Functions Admin SDK
     match /otp_codes/{otpId} {
       allow read, write: if false;
     }

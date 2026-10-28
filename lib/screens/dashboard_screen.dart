@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../core/constants/app_colors.dart';
 import '../models/loan.dart';
@@ -565,16 +566,17 @@ class DashboardScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const PopupMenuItem(
-                              value: 'seed_data',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.cloud_sync_outlined, size: 18, color: AppColors.accent),
-                                  SizedBox(width: 10),
-                                  Text('Sync / Seed Cloud Data'),
-                                ],
+                            if (kDebugMode)
+                              const PopupMenuItem(
+                                value: 'seed_data',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.cloud_sync_outlined, size: 18, color: AppColors.accent),
+                                    SizedBox(width: 10),
+                                    Text('Sync / Seed Cloud Data (Dev)'),
+                                  ],
+                                ),
                               ),
-                            ),
                             const PopupMenuItem(
                               value: 'sign_out',
                               child: Row(

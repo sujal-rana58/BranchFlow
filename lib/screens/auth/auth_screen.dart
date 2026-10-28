@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/library_repository.dart';
@@ -619,43 +620,45 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
-                const Divider(color: AppColors.border),
-                const SizedBox(height: 12),
+                if (kDebugMode) ...[
+                  const SizedBox(height: 20),
+                  const Divider(color: AppColors.border),
+                  const SizedBox(height: 12),
 
-                // Quick Demo Accounts for Evaluation
-                const Center(
-                  child: Text(
-                    'Quick Test & Login Mode:',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.bold),
+                  // Quick Demo Accounts for Evaluation
+                  const Center(
+                    child: Text(
+                      'Dev Evaluation Mode:',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          textStyle: const TextStyle(fontSize: 11),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            textStyle: const TextStyle(fontSize: 11),
+                          ),
+                          onPressed: _quickFillMemberDemo,
+                          child: const Text('👤 Member (Demo Auto-Fill)'),
                         ),
-                        onPressed: _quickFillMemberDemo,
-                        child: const Text('👤 Member (Demo Auto-Fill)'),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          textStyle: const TextStyle(fontSize: 11),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            textStyle: const TextStyle(fontSize: 11),
+                          ),
+                          onPressed: _selectStaffManualMode,
+                          child: const Text('🏢 Staff (Manual Login)'),
                         ),
-                        onPressed: _selectStaffManualMode,
-                        child: const Text('🏢 Staff (Manual Login)'),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

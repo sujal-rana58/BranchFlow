@@ -102,14 +102,18 @@ function renderEmail(purpose, code) {
 }
 
 async function sendOtpEmail(to, purpose, code) {
-  const port = SMTP_PORT.value();
+  const port = Number(process.env.SMTP_PORT || SMTP_PORT.value());
+  const user = process.env.SMTP_USER || SMTP_USER.value();
+  const pass = process.env.SMTP_PASS || SMTP_PASS.value();
+  const host = process.env.SMTP_HOST || SMTP_HOST.value();
+  const from = process.env.MAIL_FROM || MAIL_FROM.value() || `BranchFlow <${user}>`;
+
   const transporter = nodemailer.createTransport({
-    host: SMTP_HOST.value(),
+    host,
     port,
     secure: port === 465,
-    auth: { user: SMTP_USER.value(), pass: SMTP_PASS.value() },
+    auth: { user, pass },
   });
-  const from = MAIL_FROM.value() || `BranchFlow <${SMTP_USER.value()}>`;
   await transporter.sendMail({ from, to, ...renderEmail(purpose, code) });
 }
 

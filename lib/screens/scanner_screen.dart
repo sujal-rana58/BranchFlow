@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/constants/app_colors.dart';
 import '../models/book.dart';
@@ -664,125 +665,127 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     ),
                   ),
 
-                const SizedBox(height: 22),
+                if (kDebugMode) ...[
+                  const SizedBox(height: 22),
 
-                // Quick Scan Simulation Chips
-                Row(
-                  children: [
-                    const Text(
-                      'Ready for Return',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Georgia',
-                        color: AppColors.textPrimary,
+                  // Quick Scan Simulation Chips (Dev Mode)
+                  Row(
+                    children: [
+                      const Text(
+                        'Ready for Return (Dev Mode)',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Georgia',
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${activeLoans.length}',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Select any active loan to scan barcode and verify drop-box clearance:',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (activeLoans.isEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${activeLoans.length}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Select any active loan to scan barcode and verify drop-box clearance:',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 12),
-
-                if (activeLoans.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.cardBorder),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'No books currently borrowed. Checkout from Catalog to test!',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ),
-                  )
-                else
-                  ...activeLoans.map((loan) {
-                    final isCrossBranch = loan.borrowBranchId != _repo.activeBranchId;
-                    final borrowBranch = _repo.getBranchById(loan.borrowBranchId);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.cardBorder),
                       ),
-                      child: ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.menu_book, color: AppColors.primary, size: 22),
-                        ),
-                        title: Text(
-                          loan.bookTitle,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Georgia'),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${loan.bookAuthor} · ${loan.barcode}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              spacing: 6,
-                              children: [
-                                BranchChip(
-                                  branchName: borrowBranch?.name ?? loan.borrowBranchId,
-                                  isHome: true,
-                                ),
-                                if (isCrossBranch)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.warningLight,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'CROSS-BRANCH RETURN',
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.warning),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () => _startScanAndVerify(loan.barcode),
-                          child: const Text('Scan Return', style: TextStyle(fontSize: 12)),
+                      child: const Center(
+                        child: Text(
+                          'No books currently borrowed. Checkout from Catalog to test!',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ),
-                    );
-                  }),
+                    )
+                  else
+                    ...activeLoans.map((loan) {
+                      final isCrossBranch = loan.borrowBranchId != _repo.activeBranchId;
+                      final borrowBranch = _repo.getBranchById(loan.borrowBranchId);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.menu_book, color: AppColors.primary, size: 22),
+                          ),
+                          title: Text(
+                            loan.bookTitle,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Georgia'),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${loan.bookAuthor} · ${loan.barcode}',
+                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                children: [
+                                  BranchChip(
+                                    branchName: borrowBranch?.name ?? loan.borrowBranchId,
+                                    isHome: true,
+                                  ),
+                                  if (isCrossBranch)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warningLight,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'CROSS-BRANCH RETURN',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.warning),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => _startScanAndVerify(loan.barcode),
+                            child: const Text('Scan Return', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                      );
+                    }),
+                ],
               ],
             ),
           ),

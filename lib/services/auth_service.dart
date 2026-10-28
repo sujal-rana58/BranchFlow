@@ -116,7 +116,9 @@ class AuthService extends ChangeNotifier {
     final cleanEmail = email.trim().toLowerCase();
     final otp = (100000 + Random.secure().nextInt(900000)).toString();
     _localOtpCache[cleanEmail] = otp;
-    debugPrint('*** [offline mode] OTP FOR $cleanEmail: $otp ***');
+    if (kDebugMode) {
+      debugPrint('*** [offline mode] OTP FOR $cleanEmail: $otp ***');
+    }
     return otp;
   }
 
@@ -154,13 +156,9 @@ class AuthService extends ChangeNotifier {
             isEmailVerified: fbUser?.emailVerified == true || _isDemoAccount(cleanEmail),
           );
         } on FirebaseAuthException catch (e) {
-          // If demo user does not exist in Firebase Auth yet, auto-provision it
-          final isDemoAccount = cleanEmail.contains('branchflow.lib') ||
-              cleanEmail.contains('library.org') ||
-              cleanEmail.contains('member') ||
-              cleanEmail.contains('staff');
-
-          if (isDemoAccount && (e.code == 'invalid-credential' || e.code == 'user-not-found')) {
+          // In debug evaluation mode, if official demo account is not yet provisioned in Firebase Auth, auto-provision it.
+          // Production accounts must strictly authenticate with existing credentials.
+          if (kDebugMode && _isDemoAccount(cleanEmail) && (e.code == 'invalid-credential' || e.code == 'user-not-found')) {
             try {
               final newCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
                 email: cleanEmail,
@@ -299,6 +297,16 @@ class AuthService extends ChangeNotifier {
           message: 'Email successfully verified! Redirecting to Dashboard...',
         );
       } on FirebaseFunctionsException catch (e) {
+        if ((e.code == 'not-found' || e.code == 'unavailable') && kDebugMode) {
+          if (_localOtpCache[email.trim().toLowerCase()] == cleanOtp) {
+            _localOtpCache.remove(email.trim().toLowerCase());
+            _markCurrentUserVerified();
+            return AuthResult(
+              success: true,
+              message: 'Email successfully verified! Redirecting to Dashboard...',
+            );
+          }
+        }
         return AuthResult(success: false, message: mapFunctionsException(e));
       } catch (e) {
         return AuthResult(success: false, message: 'Verification error: $e');
@@ -342,6 +350,14 @@ class AuthService extends ChangeNotifier {
           message: 'A new 6-digit verification code was sent to $cleanEmail.',
         );
       } on FirebaseFunctionsException catch (e) {
+        if ((e.code == 'not-found' || e.code == 'unavailable') && kDebugMode) {
+          final otp = _generateLocalOtp(cleanEmail);
+          return AuthResult(
+            success: true,
+            message: 'A new 6-digit verification code was sent to $cleanEmail.',
+            otpCode: otp,
+          );
+        }
         return AuthResult(success: false, message: mapFunctionsException(e));
       } catch (e) {
         return AuthResult(success: false, message: 'Could not send verification code: $e');
@@ -392,6 +408,14 @@ class AuthService extends ChangeNotifier {
           message: 'If an account exists for $cleanEmail, a 6-digit reset code has been emailed to it.',
         );
       } on FirebaseFunctionsException catch (e) {
+        if ((e.code == 'not-found' || e.code == 'unavailable') && kDebugMode) {
+          final otp = _generateLocalOtp(cleanEmail);
+          return AuthResult(
+            success: true,
+            message: 'If an account exists for $cleanEmail, a 6-digit reset code has been emailed to it.',
+            otpCode: otp,
+          );
+        }
         return AuthResult(success: false, message: mapFunctionsException(e));
       } catch (e) {
         return AuthResult(success: false, message: 'Could not send reset code: $e');
@@ -429,6 +453,15 @@ class AuthService extends ChangeNotifier {
           'newPassword': newPassword,
         });
       } on FirebaseFunctionsException catch (e) {
+        if ((e.code == 'not-found' || e.code == 'unavailable') && kDebugMode) {
+          if (cleanOtp == _localOtpCache[cleanEmail]) {
+            _localOtpCache.remove(cleanEmail);
+            return AuthResult(
+              success: true,
+              message: 'Password successfully reset! You can now sign in with your new password.',
+            );
+          }
+        }
         return AuthResult(success: false, message: mapFunctionsException(e));
       } catch (e) {
         return AuthResult(success: false, message: 'Password reset error: $e');
