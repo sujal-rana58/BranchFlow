@@ -103,7 +103,16 @@ class _AuthScreenState extends State<AuthScreen> {
     if (res.success) {
       _syncUserRole();
       if (res.requiresVerification) {
-        _navigateToVerification();
+        if (mounted && !res.codeSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res.message),
+              backgroundColor: AppColors.danger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        _navigateToVerification(codeAlreadySent: res.codeSent);
       } else {
         _navigateToHome();
       }
@@ -239,6 +248,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                     ],
+                    if (errorText != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        errorText!,
+                        style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -252,8 +268,10 @@ class _AuthScreenState extends State<AuthScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            setDialogState(() => isSubmitting = true);
+                            setDialogState(() {
+                              isSubmitting = true;
+                              errorText = null;
+                            });
                             final res = await _auth.sendPasswordResetOtp(resetEmailController.text);
                             setDialogState(() {
                               isSubmitting = false;
@@ -262,12 +280,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                 sentMessage = res.message;
                               }
                             });
-
-                            if (!res.success) {
-                              messenger.showSnackBar(
-                                SnackBar(content: Text(res.message), backgroundColor: AppColors.danger),
-                              );
-                            }
                           },
                     child: isSubmitting
                         ? const SizedBox(
@@ -282,13 +294,20 @@ class _AuthScreenState extends State<AuthScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
-                            setDialogState(() => isSubmitting = true);
+                            setDialogState(() {
+                              isSubmitting = true;
+                              errorText = null;
+                            });
                             final res = await _auth.resetPasswordWithOtp(
                               email: resetEmailController.text,
                               otp: otpController.text,
                               newPassword: newPasswordController.text,
                             );
-                            setDialogState(() => isSubmitting = false);
+                            setDialogState(() {
+                              isSubmitting = false;
+                              if (!res.success) errorText = res.message;
+                            });
+                            if (!res.success) return;
 
                             // Keep the dialog open on failure so the user can retry the code.
                             if (res.success && ctx.mounted) {
@@ -298,7 +317,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(res.message),
-                                  backgroundColor: res.success ? AppColors.success : AppColors.danger,
+                                  backgroundColor: AppColors.success,
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );

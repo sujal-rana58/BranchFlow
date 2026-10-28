@@ -5,6 +5,8 @@ import '../../services/auth_service.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
   final VoidCallback onVerified;
+  // Sign-up already emails a code; otherwise the screen requests one when it opens.
+  final bool codeAlreadySent;
 
   /// Send a fresh code when the screen opens (e.g. an unverified user signing in).
   /// Sign-up already sends one, so it leaves this off.
@@ -99,8 +101,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     }
 
     setState(() => _isVerifying = true);
-    final email = _auth.currentUser?.email ?? '';
-    final res = await _auth.verifyEmailWithOtp(email: email, otp: otp);
+    final res = await _auth.verifyEmailWithOtp(otp);
+    if (!mounted) return;
     setState(() => _isVerifying = false);
 
     if (mounted) {
@@ -279,13 +281,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     const Text('Didn’t receive code?', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(width: 6),
                     TextButton(
-                      onPressed: _resendCooldown > 0 ? null : _handleResend,
+                      onPressed: _resendCooldown > 0 || _isSending ? null : _sendCode,
                       child: Text(
-                        _resendCooldown > 0 ? 'Resend in ${_resendCooldown}s' : 'Resend OTP',
+                        _isSending
+                            ? 'Sending...'
+                            : _resendCooldown > 0
+                                ? 'Resend in ${_resendCooldown}s'
+                                : 'Resend OTP',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: _resendCooldown > 0 ? AppColors.textSecondary : AppColors.primary,
+                          color: _resendCooldown > 0 || _isSending ? AppColors.textSecondary : AppColors.primary,
                         ),
                       ),
                     ),

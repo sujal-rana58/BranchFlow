@@ -11,6 +11,7 @@ This guide provides the exact step-by-step instructions to take **BranchFlow** f
 4. [Step 4: Seeding Live Initial Data (1-Click Seeder)](#step-4-seeding-live-initial-data)
 5. [Step 5: Cloud Messaging & Push Notifications (FCM)](#step-5-cloud-messaging--push-notifications-fcm)
 6. [Step 6: Production Release Signing & Store Builds (Android & iOS)](#step-6-production-release-signing--store-builds)
+7. [Step 7: Email OTP Verification & Password Reset (Cloud Functions)](#step-7-email-otp-verification--password-reset-cloud-functions)
 
 ---
 
@@ -189,3 +190,41 @@ For production library operations, notifications keep members informed about due
    flutter build ipa --release
    ```
    *Upload to TestFlight and App Store Connect using Xcode Organizer or `fastlane`.*
+
+---
+
+## Step 7: Email OTP Verification & Password Reset (Cloud Functions)
+
+Sign-up email verification and forgot-password both use 6-digit codes that are generated, emailed and checked by the Cloud Functions in `functions/`. The app never sees the code.
+
+| Function | Called when | What it does |
+|---|---|---|
+| `requestEmailOtp` | Sign-up, "Resend OTP", "Send OTP" in Forgot Password | Creates a code, stores only its salted hash in `email_otps`, emails it |
+| `verifyEmailOtp` | "Verify & Proceed" | Checks the code and sets `emailVerified` on the Firebase Auth user |
+| `resetPasswordWithOtp` | "Confirm Password Reset" | Checks the code, sets the new password, signs out other sessions |
+
+Limits: codes expire after 10 minutes, 5 wrong guesses lock the code, 30 s between sends and at most 5 sends per hour per email. Forgot Password answers the same way whether or not the account exists.
+
+### 1. Requirements
+- The Firebase project must be on the **Blaze (pay as you go)** plan to deploy Cloud Functions.
+- An SMTP account to send mail from: a Gmail address with an [App Password](https://myaccount.google.com/apppasswords), SendGrid, Mailgun, Brevo, etc.
+
+### 2. Configure email sending
+```bash
+cd functions
+npm install
+cp .env.example .env        # then edit SMTP_HOST, SMTP_PORT, SMTP_USER, MAIL_FROM
+firebase functions:secrets:set SMTP_PASS
+```
+`functions/.env` is git-ignored. The SMTP password lives in Google Secret Manager, not in the repo.
+
+### 3. Deploy
+```bash
+firebase deploy --only functions,firestore:rules
+```
+The rules block all client access to `email_otps`. Optionally add a Firestore TTL policy on the `ttl` field of `email_otps` so old code records are deleted automatically.
+
+### 4. Test
+- `cd functions && npm test` runs the OTP logic unit tests.
+- In the app, sign up with a real address you can open, enter the emailed code, then try Forgot Password with the same address.
+- The demo accounts `member@branchflow.lib` and `staff@branchflow.lib` can't receive mail, so they skip email verification.

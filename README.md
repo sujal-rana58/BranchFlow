@@ -113,8 +113,9 @@ BranchFlow contains built-in test fixtures and simulators so you can evaluate al
 
 ### 1. Instant Demo Login (Auth & Persistent Session)
 - On the launch screen, tap **"Quick Fill Member"** (`member@branchflow.lib` / `password123`) or **"Quick Fill Librarian"** (`staff@branchflow.lib` / `password123`).
-- Tap **Forgot Password** to test password reset dialog feedback.
-- Tap **Sign Up** to test input validation and Email Verification gating.
+- Tap **Sign Up** with a real email address: a 6-digit code is emailed to you and must be entered to reach the dashboard.
+- Tap **Forgot Password** to get a reset code by email and set a new password.
+- Both need the Cloud Functions deployed and SMTP configured. See Step 7 of [docs/PRODUCTION_SETUP_GUIDE.md](docs/PRODUCTION_SETUP_GUIDE.md).
 
 ### 2. Cross-Branch Return Desk (The Problem Solver)
 1. Switch to the **Return Desk** tab (barcode icon).
